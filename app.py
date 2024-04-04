@@ -110,6 +110,11 @@ def new_post():
         return redirect(url_for('home'))
     return render_template('newpost.html', title='New Post', form=form, legend='New Post')
 
+@app.route("/post/<int:post_id>", methods=['GET', 'POST'])
+def post(post_id):
+    post = db.session.execute(db.select(Posts).where(Posts.id == post_id)).scalar_one_or_none()
+    return render_template('post.html', post=post,datetime=datetime)
+
 
 
 if __name__ == '__main__':

@@ -26,6 +26,11 @@ salt = "mysalt"
 def load_user(user_id):
     return db.session.execute(db.select(User).where(User.username == user_id)).scalar_one_or_none()
 
+
+@login_manager.unauthorized_handler
+def unauthorized():
+    return redirect(url_for('login'))
+
 @app.route("/")
 def home():
     posts = db.session.scalars( select(Posts) ).all()
@@ -113,10 +118,13 @@ def new_post():
 @app.route("/post/<int:post_id>", methods=['GET', 'POST'])
 def post(post_id):
     post = db.session.execute(db.select(Posts).where(Posts.id == post_id)).scalar_one_or_none()
-    print(post.comments)
     tz = timezone("Asia/Kolkata")
     comment = db.session.execute(db.select(Comments).where(id == post_id)).scalars()
     if current_user.is_authenticated:
+        has_liked = db.session.execute(select(Likes)
+                                       .where(Likes.liked_by_id == current_user.username)
+                                       .where(Likes.liked_post_id == post_id)
+                                       ).scalar_one_or_none()
         form = CommentForm() 
         if form.validate_on_submit() :
             comment = Comments( 
@@ -132,10 +140,33 @@ def post(post_id):
                 print(comment)
             flash('Comment Created!', 'success')
 
-        return render_template('post.html', post=post,datetime=datetime,comments=post.comments,form=form,tz=tz)
+        return render_template('post.html', post=post,datetime=datetime,comments=post.comments,form=form,tz=tz, has_liked=has_liked)
     else:
         return render_template('post.html', post=post,datetime=datetime,comments=post.comments,form=None,tz=tz)
 
+
+@app.route("/post/<int:post_id>/like", methods=['GET', 'POST'])
+@login_required
+def like_post(post_id):
+    post = db.session.get(Posts, post_id)
+    has_liked = db.session.execute( select(Likes)
+                                    .where(Likes.liked_by_id == current_user.username)
+                                    .where(Likes.liked_post_id == post_id )
+                                ).scalar_one_or_none()
+    
+    if not has_liked:
+        like_object = Likes(
+            liked_post_id=post_id,
+            liked_by_id=current_user.username
+        )
+        db.session.add(like_object)
+        post.likes.append(like_object)
+        db.session.commit()
+    else:
+        post.likes.remove(has_liked)
+        db.session.delete(has_liked)
+        db.session.commit()
+    return redirect(url_for('post', post_id=post_id))
 
 
 

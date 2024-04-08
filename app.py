@@ -122,13 +122,12 @@ def new_post():
 def post(post_id):
     post = db.session.execute(db.select(Posts).where(Posts.id == post_id)).scalar_one_or_none()
     tz = timezone("Asia/Kolkata")
-    comment = db.session.execute(db.select(Comments).where(id == post_id)).scalars()
     if current_user.is_authenticated:
         has_liked = db.session.execute(select(Likes)
                                        .where(Likes.liked_by_id == current_user.username)
                                        .where(Likes.liked_post_id == post_id)
                                        ).scalar_one_or_none()
-        form = CommentForm() 
+        form = CommentForm()
         if form.validate_on_submit() :
             comment = Comments( 
                         text=form.text.data,
@@ -139,8 +138,6 @@ def post(post_id):
             post.comments.append(comment)
             comment.created_by = current_user
             db.session.commit()
-            for comment in post.comments:
-                print(comment)
             flash('Comment Created!', 'success')
 
         return render_template('post.html', post=post,datetime=datetime,comments=post.comments,form=form,tz=tz, has_liked=has_liked)
@@ -151,7 +148,9 @@ def post(post_id):
 @login_required
 def update_post(post_id):
         post = db.session.execute(db.select(Posts).where(Posts.id == post_id)).scalar_one_or_none()
-        form= PostForm()
+        form = PostForm()
+        form.title.data = post.title
+        form.content.data = post.text
         if post.owner != current_user:
                return redirect(url_for('post', post_id=post.id))
         if form.validate_on_submit():

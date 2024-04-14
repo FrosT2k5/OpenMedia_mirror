@@ -10,6 +10,8 @@ from pytz import timezone
 from itsdangerous.url_safe import URLSafeTimedSerializer
 from itsdangerous.exc import SignatureExpired
 import os
+from fileupload import upload_image
+import secrets
 
 
 login_manager = LoginManager()
@@ -185,12 +187,24 @@ def new_post():
     form = PostForm() 
     if form.validate_on_submit():
         timestamp = int(time.time())
-        post = Posts( 
-                     title=form.title.data, 
-                     text=form.content.data,
-                     owner=current_user,
-                     timestamp=timestamp
-                     )
+        file = form.photo.data
+        if file:
+            randomhex = secrets.token_hex(10)
+            image_url = upload_image(file, f"{current_user.username}_post_{randomhex}")
+            post = Posts(
+                title=form.title.data,
+                text=form.content.data,
+                owner=current_user,
+                timestamp=timestamp,
+                image=image_url
+            )
+        else:
+            post = Posts(
+                         title=form.title.data,
+                         text=form.content.data,
+                         owner=current_user,
+                         timestamp=timestamp
+                         )
         db.session.add(post)
         db.session.commit()
         flash('Post Created!', 'success')
@@ -200,13 +214,15 @@ def new_post():
 @app.route("/post/<int:post_id>", methods=['GET', 'POST'])
 def post(post_id):
     post = db.session.execute(db.select(Posts).where(Posts.id == post_id)).scalar_one_or_none()
+    comments_list = post.comments[::-1] if post.comments else []
+    print(comments_list)
     tz = timezone("Asia/Kolkata")
     if current_user.is_authenticated:
         has_liked = db.session.execute(select(Likes)
                                        .where(Likes.liked_by_id == current_user.username)
                                        .where(Likes.liked_post_id == post_id)
                                        ).scalar_one_or_none()
-        form = CommentForm()
+        form = CommentForm(text="")
         if form.validate_on_submit() :
             comment = Comments( 
                         text=form.text.data,
@@ -218,10 +234,11 @@ def post(post_id):
             comment.created_by = current_user
             db.session.commit()
             flash('Comment Created!', 'success')
+            return redirect(url_for("post", post_id=post_id))
 
-        return render_template('post.html', post=post,datetime=datetime,comments=post.comments,form=form,tz=tz, has_liked=has_liked)
+        return render_template('post.html', post=post,datetime=datetime,comments=comments_list,form=form,tz=tz, has_liked=has_liked)
     else:
-        return render_template('post.html', post=post,datetime=datetime,comments=post.comments,form=None,tz=tz)
+        return render_template('post.html', post=post,datetime=datetime,comments=comments_list,form=None,tz=tz)
 
 @app.route("/post/<int:post_id>/update", methods=['GET', 'POST'])
 @login_required
@@ -232,7 +249,16 @@ def update_post(post_id):
                return redirect(url_for('post', post_id=post.id))
         if form.validate_on_submit():
                 post.title = form.title.data
-                post.text = form.content.data 
+                post.text = form.content.data
+                file = form.photo.data
+                if file:
+                    if post.image:
+                        image_id = post.image.split("/")[-1]
+                        upload_image(file, image_id)
+                    else:
+                        randomhex = secrets.token_hex(10)
+                        image_url = upload_image(file, f"{current_user.username}_post_{randomhex}")
+                        post.image = image_url
                 db.session.commit()
                 flash('Post has been updated!', 'success')
                 return redirect(url_for('home'))

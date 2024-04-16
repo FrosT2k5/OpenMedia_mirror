@@ -12,6 +12,7 @@ from itsdangerous.exc import SignatureExpired
 import os
 from fileupload import upload_image
 import secrets
+from sqlalchemy import delete
 
 
 login_manager = LoginManager()
@@ -259,6 +260,20 @@ def update_post(post_id):
                 flash('Post has been updated!', 'success')
                 return redirect(url_for('home'))
         return render_template('newpost.html', title='Update Post', form=form, legend='Update Post')
+
+@app.route("/post/<int:post_id>/delete", methods=['GET', 'POST'])
+@login_required
+def delete_post(post_id):
+        post = db.session.execute(db.select(Posts).where(Posts.id == post_id)).scalar_one_or_none()
+        if post.owner != current_user:
+               return redirect(url_for('post', post_id=post.id))
+        else:
+            db.session.execute( delete(Comments).where(Comments.post_id == post_id) )
+            db.session.execute( delete(Likes).where(Likes.liked_post_id == post_id) )
+            db.session.delete(post)
+            db.session.commit()
+            flash('Post has been Deleted !', 'success')
+            return redirect(url_for('home'))
 
 @app.route("/post/<int:post_id>/like", methods=['GET', 'POST'])
 @login_required

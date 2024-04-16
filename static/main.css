@@ -1,5 +1,4 @@
 .content-section {
-  //background: #ffffff;
   padding: 10px 20px;
   border: 1px solid #dddddd;
   border-radius: 8px;
@@ -11,7 +10,6 @@
 }
 
 .content-section {
-  //background: #ffffff;
   padding: 10px 20px;
   border: 1px solid #dddddd;
   border-radius: 3px;
@@ -67,10 +65,10 @@ a.article-title:hover {
           background-image: url(edit-hover.svg);
          
 }
-
-.invert {
-        filter: invert(80%);
+.deleteButton:hover {
+  transform: scale(1.2);
 }
+
 
 @media (prefers-color-scheme: dark) {
         [data-bs-theme=dark] .article-title {
@@ -82,7 +80,7 @@ a.article-title:hover {
                 color: #9BA4B5;
         }
 
-        [data-bs-theme=dark] .invertOnDark { 
+        [data-bs-theme=dark] .invertOnDark {
             filter: invert(80%); 
         } 
 

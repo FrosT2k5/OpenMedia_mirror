@@ -20,8 +20,8 @@ login_manager = LoginManager()
 mail = Mail()
 app = Flask(__name__)
 
-app.config['SECRET_KEY'] = '5791628bb0b13ce0c676dfde280ba245'
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///project.db"
+app.config['SECRET_KEY'] = os.environ.get("FLASK_SECRET_KEY") if os.environ.get("FLASK_SECRET_KEY") else '5791628bb0b13ce0c676dfde280ba245'
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DB_URI") if os.environ.get("DB_URI") else "sqlite:///project.db"
 app.config["MAIL_SERVER"] = os.environ.get("MAIL_SERVER")
 app.config["MAIL_PORT"] = os.environ.get("MAIL_PORT")
 app.config["MAIL_USE_SSL"] = True
@@ -37,10 +37,13 @@ with app.app_context():
     db.create_all()
 
 salt = "mysalt"
+salt = os.environ.get("FLASK_SALT") if os.environ.get("FLASK_SALT") else salt
 itsd_secret_key = "SECRET-KEY"
+itsd_secret_key = os.environ.get("ITSD_SECRET_KEY") if os.environ.get("ITSD_SECRET_KEY") else itsd_secret_key
 itsd_salt = "MY-SALT"
+itsd_salt = os.environ.get("ITSD_SALT") if os.environ.get("ITSD_SALT") else itsd_salt
 reset_pass_serializer = URLSafeTimedSerializer(itsd_secret_key, salt=itsd_salt)
-tz=timezone("Asia/Kolkata")
+tz = timezone("Asia/Kolkata")
 
 def send_reset_mail(recipient_email, signature):
     msg = Message("Openmedia: Reset Password")
@@ -249,7 +252,6 @@ def new_post():
 def post(post_id):
     post = db.session.execute(db.select(Posts).where(Posts.id == post_id)).scalar_one_or_none()
     comments_list = post.comments[::-1] if post.comments else []
-    print(comments_list)
     if current_user.is_authenticated:
         has_liked = db.session.execute(select(Likes)
                                        .where(Likes.liked_by_id == current_user.username)
